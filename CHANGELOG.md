@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0 - 2026-05-12
+
+- Agrega autor de la app: `jcbmca`.
+- Reorganiza conexion MariaDB y seleccion de bases en un unico panel compacto.
+- Reduce margenes y espaciados para dar mas altura util a las listas de tablas.
+- Mantiene el registro en la parte inferior con menor impacto sobre el area principal.
+
 ## 1.2.0 - 2026-05-12
 
 - Cambia la seleccion de tema de `QComboBox` a `QToolButton` con estado.

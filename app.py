@@ -13,7 +13,6 @@ from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Qt, Signal, 
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
-    QFormLayout,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -35,7 +34,7 @@ from PySide6.QtWidgets import (
 )
 
 APP_NAME = "MariaDB Step Migrator"
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.3.0"
 APP_AUTHOR = "jcbmca"
 
 
@@ -85,8 +84,8 @@ def build_app_styles(theme: str) -> str:
         background: {colors["panel"]};
         border: 1px solid {colors["border"]};
         border-radius: 8px;
-        margin-top: 14px;
-        padding: 12px;
+        margin-top: 10px;
+        padding: 9px;
         font-weight: 600;
     }}
     QGroupBox::title {{
@@ -103,7 +102,7 @@ def build_app_styles(theme: str) -> str:
         color: {colors["text"]};
         border: 1px solid {colors["border"]};
         border-radius: 6px;
-        padding: 7px 9px;
+        padding: 6px 8px;
         selection-background-color: {colors["selection"]};
     }}
     QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QTextEdit:focus, QListWidget:focus {{
@@ -127,7 +126,7 @@ def build_app_styles(theme: str) -> str:
         color: {colors["text"]};
         border: 1px solid {colors["border"]};
         border-radius: 6px;
-        padding: 8px 12px;
+        padding: 7px 11px;
         font-weight: 600;
     }}
     QPushButton:hover {{
@@ -345,11 +344,15 @@ class MainWindow(QMainWindow):
         self.loaded_project: tuple[str, str] | None = None
 
         self.host_input = QLineEdit(os.getenv("MARIADB_SERVER", "127.0.0.1"))
+        self.host_input.setPlaceholderText("127.0.0.1")
         self.port_input = QSpinBox()
         self.port_input.setRange(1, 65535)
         self.port_input.setValue(int(os.getenv("MARIADB_PORT", "3306")))
+        self.port_input.setFixedWidth(92)
         self.user_input = QLineEdit(os.getenv("MARIADB_USER", ""))
+        self.user_input.setPlaceholderText("usuario")
         self.password_input = QLineEdit(os.getenv("MARIADB_PASS", ""))
+        self.password_input.setPlaceholderText("clave")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.connect_button = QPushButton("Conectar")
         self.connect_button.setObjectName("primaryButton")
@@ -391,6 +394,7 @@ class MainWindow(QMainWindow):
 
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
+        self.log_output.setMinimumHeight(120)
 
         self._build_ui()
         self._set_button_icons()
@@ -402,29 +406,34 @@ class MainWindow(QMainWindow):
     def _build_ui(self) -> None:
         central = QWidget()
         root = QVBoxLayout(central)
+        root.setContentsMargins(10, 8, 10, 8)
+        root.setSpacing(8)
 
-        connection_group = QGroupBox("Conexion MariaDB")
-        form = QGridLayout(connection_group)
+        top_group = QGroupBox("Conexion y proyecto")
+        form = QGridLayout(top_group)
+        form.setContentsMargins(10, 8, 10, 10)
+        form.setHorizontalSpacing(8)
+        form.setVerticalSpacing(6)
         form.addWidget(QLabel("Host"), 0, 0)
         form.addWidget(self.host_input, 0, 1)
         form.addWidget(QLabel("Puerto"), 0, 2)
         form.addWidget(self.port_input, 0, 3)
-        form.addWidget(QLabel("Usuario"), 1, 0)
-        form.addWidget(self.user_input, 1, 1)
-        form.addWidget(QLabel("Clave"), 1, 2)
-        form.addWidget(self.password_input, 1, 3)
-        form.addWidget(self.connect_button, 0, 4)
-        form.addWidget(self.refresh_button, 1, 4)
-        form.addWidget(QLabel("Tema"), 2, 0)
-        form.addWidget(self.theme_button, 2, 1)
-        root.addWidget(connection_group)
-
-        db_group = QGroupBox("Bases de datos")
-        db_form = QFormLayout(db_group)
-        db_form.addRow("DB origen", self.source_db_combo)
-        db_form.addRow("DB destino", self.target_db_combo)
-        db_form.addRow("", self.load_project_button)
-        root.addWidget(db_group)
+        form.addWidget(QLabel("Usuario"), 0, 4)
+        form.addWidget(self.user_input, 0, 5)
+        form.addWidget(QLabel("Clave"), 0, 6)
+        form.addWidget(self.password_input, 0, 7)
+        form.addWidget(self.theme_button, 0, 8)
+        form.addWidget(self.connect_button, 0, 9)
+        form.addWidget(self.refresh_button, 0, 10)
+        form.addWidget(QLabel("Origen"), 1, 0)
+        form.addWidget(self.source_db_combo, 1, 1, 1, 3)
+        form.addWidget(QLabel("Destino"), 1, 4)
+        form.addWidget(self.target_db_combo, 1, 5, 1, 3)
+        form.addWidget(self.load_project_button, 1, 8, 1, 3)
+        form.setColumnStretch(1, 2)
+        form.setColumnStretch(5, 2)
+        form.setColumnStretch(7, 2)
+        root.addWidget(top_group)
 
         splitter = QSplitter()
         splitter.addWidget(self._source_panel())
@@ -435,6 +444,7 @@ class MainWindow(QMainWindow):
 
         log_group = QGroupBox("Registro")
         log_layout = QVBoxLayout(log_group)
+        log_layout.setContentsMargins(10, 8, 10, 10)
         log_layout.addWidget(self.log_output)
         root.addWidget(log_group)
 
@@ -447,6 +457,8 @@ class MainWindow(QMainWindow):
     def _source_panel(self) -> QWidget:
         panel = QGroupBox("Tablas origen")
         layout = QVBoxLayout(panel)
+        layout.setContentsMargins(10, 8, 10, 10)
+        layout.setSpacing(8)
         layout.addWidget(self.source_tables)
         layout.addWidget(self.add_button)
         return panel
@@ -454,6 +466,8 @@ class MainWindow(QMainWindow):
     def _migration_panel(self) -> QWidget:
         panel = QGroupBox("Orden de migracion")
         layout = QVBoxLayout(panel)
+        layout.setContentsMargins(10, 8, 10, 10)
+        layout.setSpacing(8)
         layout.addWidget(self.migration_tables)
 
         buttons = QHBoxLayout()
@@ -467,6 +481,8 @@ class MainWindow(QMainWindow):
     def _target_panel(self) -> QWidget:
         panel = QGroupBox("Tablas destino")
         layout = QVBoxLayout(panel)
+        layout.setContentsMargins(10, 8, 10, 10)
+        layout.setSpacing(8)
         layout.addWidget(self.target_tables)
         layout.addWidget(self.reload_tables_button)
         layout.addWidget(self.delete_button)

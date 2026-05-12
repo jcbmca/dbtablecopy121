@@ -1,6 +1,6 @@
 # MariaDB Step Migrator
 
-Version: **1.2.0**
+Version: **1.3.0**
 
 Autor: **jcbmca**
 
@@ -24,6 +24,7 @@ Aplicacion de escritorio en Python + Qt6 para migrar tablas MariaDB entre bases 
 - Tema claro u oscuro con boton de estado.
 - Iconos en las acciones principales.
 - Numero de version visible en el titulo y barra de estado.
+- Distribucion compacta de conexion/proyecto para dar mas espacio a las tablas.
 
 ## Instalacion
 
