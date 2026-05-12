@@ -6,6 +6,8 @@ Autor: **jcbmca**
 
 Aplicacion de escritorio en Python + Qt6 para migrar tablas MariaDB entre bases visibles para una misma cuenta. Esta pensada para migraciones paso a paso: elegis una base origen, una base destino, armas un orden de tablas y ejecutas copias controladas.
 
+![Screenshot de MariaDB Step Migrator](screenshot/Screenshot0.png)
+
 ## Funcionalidades
 
 - Conexion a MariaDB por host, puerto, usuario y clave.
