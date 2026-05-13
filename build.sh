@@ -9,6 +9,7 @@ venv/bin/python -m PyInstaller \
   --windowed \
   --onedir \
   --clean \
+  --noconfirm \
   app.py
 
 echo "Build listo: $ROOT_DIR/dist/mariadb-step-migrator/mariadb-step-migrator"

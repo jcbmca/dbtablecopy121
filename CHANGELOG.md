@@ -1,8 +1,14 @@
 # Changelog
 
+## 1.4.0 - 2026-05-13
+
+- Agrega perfiles persistentes de conexion MariaDB.
+- Permite guardar, cargar y eliminar multiples conexiones desde la interfaz.
+- Guarda host, puerto, usuario y clave en configuracion local de usuario.
+- Documenta ubicacion del archivo de conexiones.
+
 ## 1.3.0 - 2026-05-12
 
-- Agrega autor de la app: `jcbmca`.
 - Reorganiza conexion MariaDB y seleccion de bases en un unico panel compacto.
 - Reduce margenes y espaciados para dar mas altura util a las listas de tablas.
 - Mantiene el registro en la parte inferior con menor impacto sobre el area principal.

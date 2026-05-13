@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import sys
 import time
 import traceback
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -34,8 +36,9 @@ from PySide6.QtWidgets import (
 )
 
 APP_NAME = "MariaDB Step Migrator"
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.4.0"
 APP_AUTHOR = "jcbmca"
+APP_CONFIG_DIRNAME = "mariadb-step-migrator"
 
 
 def build_app_styles(theme: str) -> str:
@@ -213,12 +216,42 @@ def quote_identifier(identifier: str) -> str:
     return f"`{identifier.replace('`', '``')}`"
 
 
+def app_config_dir() -> Path:
+    base = Path(os.getenv("XDG_CONFIG_HOME", Path.home() / ".config"))
+    return base / APP_CONFIG_DIRNAME
+
+
 @dataclass(frozen=True)
 class DbConfig:
     host: str
     port: int
     user: str
     password: str
+
+
+class ConnectionStore:
+    def __init__(self) -> None:
+        self.path = app_config_dir() / "connections.json"
+
+    def load(self) -> dict[str, Any]:
+        if not self.path.exists():
+            return {"last_profile": "", "profiles": {}}
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {"last_profile": "", "profiles": {}}
+
+        profiles = data.get("profiles", {})
+        if not isinstance(profiles, dict):
+            profiles = {}
+        return {
+            "last_profile": str(data.get("last_profile", "")),
+            "profiles": profiles,
+        }
+
+    def save(self, data: dict[str, Any]) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
 
 
 class DatabaseClient:
@@ -342,6 +375,9 @@ class MainWindow(QMainWindow):
         self.busy_message = ""
         self.busy_started_at = 0.0
         self.loaded_project: tuple[str, str] | None = None
+        self.connection_store = ConnectionStore()
+        self.connection_data = self.connection_store.load()
+        self.connection_profiles: dict[str, dict[str, Any]] = self.connection_data["profiles"]
 
         self.host_input = QLineEdit(os.getenv("MARIADB_SERVER", "127.0.0.1"))
         self.host_input.setPlaceholderText("127.0.0.1")
@@ -360,6 +396,9 @@ class MainWindow(QMainWindow):
         self.refresh_button.setEnabled(False)
         self.load_project_button = QPushButton("Cargar tablas")
         self.load_project_button.setObjectName("primaryButton")
+        self.connection_profile_combo = QComboBox()
+        self.save_connection_button = QPushButton("Guardar")
+        self.delete_connection_button = QPushButton("Eliminar")
         self.theme_button = QToolButton()
         self.theme_button.setCheckable(True)
         self.theme_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
@@ -398,6 +437,7 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._set_button_icons()
+        self.populate_connection_profiles()
         self._connect_signals()
         self._set_database_controls_enabled(False)
         self.apply_theme(self.current_theme())
@@ -425,11 +465,15 @@ class MainWindow(QMainWindow):
         form.addWidget(self.theme_button, 0, 8)
         form.addWidget(self.connect_button, 0, 9)
         form.addWidget(self.refresh_button, 0, 10)
-        form.addWidget(QLabel("Origen"), 1, 0)
-        form.addWidget(self.source_db_combo, 1, 1, 1, 3)
-        form.addWidget(QLabel("Destino"), 1, 4)
-        form.addWidget(self.target_db_combo, 1, 5, 1, 3)
-        form.addWidget(self.load_project_button, 1, 8, 1, 3)
+        form.addWidget(QLabel("Perfil"), 1, 0)
+        form.addWidget(self.connection_profile_combo, 1, 1, 1, 3)
+        form.addWidget(self.save_connection_button, 1, 4)
+        form.addWidget(self.delete_connection_button, 1, 5)
+        form.addWidget(QLabel("Origen"), 2, 0)
+        form.addWidget(self.source_db_combo, 2, 1, 1, 3)
+        form.addWidget(QLabel("Destino"), 2, 4)
+        form.addWidget(self.target_db_combo, 2, 5, 1, 3)
+        form.addWidget(self.load_project_button, 2, 8, 1, 3)
         form.setColumnStretch(1, 2)
         form.setColumnStretch(5, 2)
         form.setColumnStretch(7, 2)
@@ -492,6 +536,9 @@ class MainWindow(QMainWindow):
         self.connect_button.clicked.connect(self.connect_to_database)
         self.refresh_button.clicked.connect(self.load_databases)
         self.load_project_button.clicked.connect(self.load_selected_project_tables)
+        self.connection_profile_combo.currentTextChanged.connect(self.apply_selected_connection_profile)
+        self.save_connection_button.clicked.connect(self.save_current_connection_profile)
+        self.delete_connection_button.clicked.connect(self.delete_selected_connection_profile)
         self.add_button.clicked.connect(self.add_selected_tables)
         self.remove_button.clicked.connect(self.remove_selected_migration_tables)
         self.up_button.clicked.connect(lambda: self.move_migration_selection(-1))
@@ -509,6 +556,8 @@ class MainWindow(QMainWindow):
             self.connect_button,
             self.refresh_button,
             self.load_project_button,
+            self.save_connection_button,
+            self.delete_connection_button,
             self.add_button,
             self.remove_button,
             self.up_button,
@@ -522,6 +571,8 @@ class MainWindow(QMainWindow):
         self.connect_button.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_DialogApplyButton))
         self.refresh_button.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_BrowserReload))
         self.load_project_button.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
+        self.save_connection_button.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
+        self.delete_connection_button.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_TrashIcon))
         self.add_button.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_ArrowRight))
         self.remove_button.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_ArrowLeft))
         self.up_button.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_ArrowUp))
@@ -551,6 +602,88 @@ class MainWindow(QMainWindow):
             self.theme_button.setText("Claro")
             self.theme_button.setToolTip("Cambiar a tema oscuro")
             self.theme_button.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_DialogYesButton))
+
+    def populate_connection_profiles(self) -> None:
+        last_profile = self.connection_data.get("last_profile", "")
+        self.connection_profile_combo.blockSignals(True)
+        self.connection_profile_combo.clear()
+        self.connection_profile_combo.addItem("Sin perfil guardado")
+        self.connection_profile_combo.addItems(sorted(self.connection_profiles))
+        self.connection_profile_combo.blockSignals(False)
+
+        if last_profile in self.connection_profiles:
+            self._select_combo_text(self.connection_profile_combo, last_profile)
+            self.apply_selected_connection_profile(last_profile)
+
+    def selected_connection_profile_name(self) -> str:
+        name = self.connection_profile_combo.currentText()
+        return "" if name == "Sin perfil guardado" else name
+
+    def apply_selected_connection_profile(self, profile_name: str) -> None:
+        profile = self.connection_profiles.get(profile_name)
+        if not profile:
+            return
+
+        self.host_input.setText(str(profile.get("host", "")))
+        self.port_input.setValue(int(profile.get("port", 3306)))
+        self.user_input.setText(str(profile.get("user", "")))
+        self.password_input.setText(str(profile.get("password", "")))
+        self.log(f"Perfil de conexion cargado: {profile_name}")
+
+    def save_current_connection_profile(self) -> None:
+        config = self.config_from_form()
+        if not config.host or not config.user:
+            QMessageBox.warning(self, "Datos incompletos", "Ingresa host y usuario antes de guardar.")
+            return
+
+        current_name = self.selected_connection_profile_name()
+        default_name = current_name or f"{config.user}@{config.host}:{config.port}"
+        profile_name, accepted = QInputDialog.getText(
+            self,
+            "Guardar conexion",
+            "Nombre del perfil:",
+            text=default_name,
+        )
+        profile_name = profile_name.strip()
+        if not accepted or not profile_name:
+            return
+
+        self.connection_profiles[profile_name] = {
+            "host": config.host,
+            "port": config.port,
+            "user": config.user,
+            "password": config.password,
+        }
+        self.connection_data["profiles"] = self.connection_profiles
+        self.connection_data["last_profile"] = profile_name
+        self.connection_store.save(self.connection_data)
+        self.populate_connection_profiles()
+        self._select_combo_text(self.connection_profile_combo, profile_name)
+        self.log(f"Perfil de conexion guardado: {profile_name}")
+
+    def delete_selected_connection_profile(self) -> None:
+        profile_name = self.selected_connection_profile_name()
+        if not profile_name:
+            QMessageBox.warning(self, "Sin perfil", "Selecciona un perfil guardado para eliminar.")
+            return
+
+        response = QMessageBox.warning(
+            self,
+            "Eliminar conexion",
+            f"Eliminar el perfil guardado '{profile_name}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if response != QMessageBox.StandardButton.Yes:
+            return
+
+        self.connection_profiles.pop(profile_name, None)
+        if self.connection_data.get("last_profile") == profile_name:
+            self.connection_data["last_profile"] = ""
+        self.connection_data["profiles"] = self.connection_profiles
+        self.connection_store.save(self.connection_data)
+        self.populate_connection_profiles()
+        self.log(f"Perfil de conexion eliminado: {profile_name}")
 
     def _set_database_controls_enabled(self, enabled: bool) -> None:
         for widget in (
@@ -651,6 +784,11 @@ class MainWindow(QMainWindow):
         if not config.host or not config.user:
             QMessageBox.warning(self, "Datos incompletos", "Ingresa host y usuario.")
             return
+
+        profile_name = self.selected_connection_profile_name()
+        if profile_name:
+            self.connection_data["last_profile"] = profile_name
+            self.connection_store.save(self.connection_data)
 
         self.client = DatabaseClient(config)
         self.loaded_project = None

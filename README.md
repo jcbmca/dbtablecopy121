@@ -1,6 +1,6 @@
 # MariaDB Step Migrator
 
-Version: **1.3.0**
+Version: **1.4.0**
 
 Autor: **jcbmca**
 
@@ -27,6 +27,7 @@ Aplicacion de escritorio en Python + Qt6 para migrar tablas MariaDB entre bases 
 - Iconos en las acciones principales.
 - Numero de version visible en el titulo y barra de estado.
 - Distribucion compacta de conexion/proyecto para dar mas espacio a las tablas.
+- Perfiles persistentes de conexion MariaDB con host, puerto, usuario y clave.
 
 ## Instalacion
 
@@ -78,19 +79,45 @@ APP_THEME=Claro
 
 `APP_THEME` acepta `Claro` u `Oscuro`.
 
+## Perfiles de conexion
+
+La app permite guardar multiples conexiones MariaDB desde el boton **Guardar** del panel superior. Cada perfil conserva:
+
+- Host
+- Puerto
+- Usuario
+- Clave
+
+Los perfiles se cargan desde el selector **Perfil**. Tambien se puede eliminar el perfil seleccionado con **Eliminar**.
+
+El archivo local de perfiles se guarda en:
+
+```text
+~/.config/mariadb-step-migrator/connections.json
+```
+
+Si existe `$XDG_CONFIG_HOME`, se usa:
+
+```text
+$XDG_CONFIG_HOME/mariadb-step-migrator/connections.json
+```
+
+La clave queda guardada en ese archivo local para poder reconectar en futuras aperturas de la app.
+
 ## Uso
 
 1. Ingresa host, puerto, usuario y clave.
 2. Usa el boton **Tema** para alternar entre claro y oscuro si queres cambiar la apariencia.
-3. Presiona **Conectar**.
-4. Selecciona la **DB origen** y la **DB destino**.
-5. Presiona **Cargar tablas**.
-6. Si ya habia un proyecto cargado y cambias origen/destino, confirma si queres cambiar de proyecto.
-7. Selecciona una o mas tablas de origen.
-8. Presiona **Agregar >** para sumarlas al orden de migracion.
-9. Ajusta el orden con **Subir** y **Bajar**.
-10. Presiona **Migrar seleccion**.
-11. En destino podes seleccionar una o varias tablas y presionar **Borrar tablas destino**.
+3. Opcionalmente guarda o carga una conexion desde **Perfil**.
+4. Presiona **Conectar**.
+5. Selecciona la **DB origen** y la **DB destino**.
+6. Presiona **Cargar tablas**.
+7. Si ya habia un proyecto cargado y cambias origen/destino, confirma si queres cambiar de proyecto.
+8. Selecciona una o mas tablas de origen.
+9. Presiona **Agregar >** para sumarlas al orden de migracion.
+10. Ajusta el orden con **Subir** y **Bajar**.
+11. Presiona **Migrar seleccion**.
+12. En destino podes seleccionar una o varias tablas y presionar **Borrar tablas destino**.
 
 ## SQL ejecutado
 
