@@ -6,6 +6,8 @@
 - Reorganiza conexion MariaDB y seleccion de bases en un unico panel compacto.
 - Reduce margenes y espaciados para dar mas altura util a las listas de tablas.
 - Mantiene el registro en la parte inferior con menor impacto sobre el area principal.
+- Agrega `build.sh` y `requirements-dev.txt` para generar binario Linux con PyInstaller.
+- Documenta el proceso de build en Linux.
 
 ## 1.2.0 - 2026-05-12
 

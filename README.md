@@ -41,6 +41,28 @@ venv/bin/pip install -r requirements.txt
 venv/bin/python app.py
 ```
 
+## Generar binario Linux
+
+Instala dependencias de desarrollo:
+
+```bash
+venv/bin/pip install -r requirements-dev.txt
+```
+
+Genera el paquete:
+
+```bash
+./build.sh
+```
+
+El ejecutable queda en:
+
+```bash
+dist/mariadb-step-migrator/mariadb-step-migrator
+```
+
+El build usa PyInstaller en modo `--onedir`, recomendado para apps Qt porque deja las librerias y plugins junto al ejecutable.
+
 ## Configuracion `.env`
 
 La app puede precargar datos desde `.env` si existen estas variables:
